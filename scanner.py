@@ -13,10 +13,10 @@ import base64
 sys.path.append("./scapy-ssl_tls/")
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+import ssl_tls_crypto
+import ssl_tls
 import scapy
 from scapy.all import *
-from ssl_tls import *
-import ssl_tls_crypto
 
 from pyx509.pkcs7.asn1_models.X509_certificate import Certificate
 from pyx509.pkcs7_models import X509Certificate, PublicKeyInfo, ExtendedKeyUsageExt
@@ -89,7 +89,7 @@ class RC4Export(CipherSuite):
 
     @classmethod
     def get_client_master_key(cls, public_key):
-        client_master_key = SSLv2ClientMasterKey(cipher_suite=cls.get_constant(),
+        client_master_key = ssl_tls.SSLv2ClientMasterKey(cipher_suite=cls.get_constant(),
                                                  encrypted_key=cls.get_encrypted_pms(public_key, cls.SECRET_KEY),
                                                  clear_key=CLEAR_KEY)
         return client_master_key
@@ -245,7 +245,7 @@ def sslv2_connect(ip, port, protocol, cipher_suite, result_additional_data):
         return NO_STARTTLS
 
 
-    client_hello = SSLv2Record()/SSLv2ClientHello(cipher_suites=SSL2_CIPHER_SUITES.keys(),challenge=CHALLENGE)
+    client_hello = ssl_tls.SSLv2Record()/ssl_tls.SSLv2ClientHello(cipher_suites=ssl_tls.SSL2_CIPHER_SUITES.keys(),challenge=CHALLENGE)
     s.sendall(str(client_hello))
 
     rlist, wlist, xlist = select.select([s], [], [s], SOCKET_TIMEOUT)
@@ -261,18 +261,18 @@ def sslv2_connect(ip, port, protocol, cipher_suite, result_additional_data):
         s.close()
         return "3b: %s" % NO_TLS
 
-    server_hello = timeout(SSL, (server_hello_raw,), timeout_duration=SOCKET_TIMEOUT)
+    server_hello = timeout(ssl_tls.SSL, (server_hello_raw,), timeout_duration=SOCKET_TIMEOUT)
     if server_hello == None:
         print '%s: Case 3c; Timeout on parsing server hello' % ip
         s.close()
         return "3c: %s" % NO_TLS
 
-    if not SSLv2ServerHello in server_hello:
+    if not ssl_tls.SSLv2ServerHello in server_hello:
         print '%s: Case 3d; Server hello did not contain server hello' % ip
         s.close()
         return "3d: %s" % NO_TLS
 
-    parsed_server_hello = server_hello[SSLv2ServerHello]
+    parsed_server_hello = server_hello[ssl_tls.SSLv2ServerHello]
     connection_id = parsed_server_hello.connection_id
     cert = parsed_server_hello.certificates
 
@@ -288,7 +288,7 @@ def sslv2_connect(ip, port, protocol, cipher_suite, result_additional_data):
     cipher_suite_advertised = cipher_suite.get_constant() in server_advertised_cipher_suites
 
     client_master_key = cipher_suite.get_client_master_key(public_key)
-    client_key_exchange = SSLv2Record()/client_master_key
+    client_key_exchange = ssl_tls.SSLv2Record()/client_master_key
 
     s.sendall(str(client_key_exchange))
 
